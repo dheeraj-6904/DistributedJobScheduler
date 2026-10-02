@@ -1,27 +1,56 @@
-# Compiled class file
-*.class
+# ========================
+# .NET / C#
+# ========================
 
-# Log file
+## Build outputs
+bin/
+obj/
+
+## NuGet packages (restored via dotnet restore)
+*.nupkg
+*.snupkg
+.nuget/
+
+## User-specific files
+*.user
+*.suo
+.vs/
+
+## Rider / JetBrains
+.idea/
+*.DotSettings.user
+
+## Visual Studio Code
+.vscode/
+
+## Logs
 *.log
+logs/
 
-# BlueJ files
-*.ctxt
+## Runtime
+*.pid
 
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
+## Published output
+publish/
+out/
 
-# Package Files #
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
+## Coverage
+coverage/
+*.coverage
+*.coveragexml
+TestResults/
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
+# ========================
+# Docs (design notes, local only)
+# ========================
+docs/
 
-# Kotlin Gradle plugin data, see https://kotlinlang.org/docs/whatsnew20.html#new-directory-for-kotlin-data-in-gradle-projects
-.kotlin/
+# ========================
+# OS
+# ========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Agent
+.agents/
