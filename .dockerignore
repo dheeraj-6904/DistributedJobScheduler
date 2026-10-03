@@ -1,0 +1,38 @@
+# Build artifacts
+**/bin/
+**/obj/
+**/out/
+
+# Unit test results
+**/TestResults/
+
+# User-specific files
+**/*.user
+**/*.suo
+**/*.vsuserprefs
+
+# IDE and OS files
+.vscode/
+.idea/
+.vs/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Local configuration
+*.env
+*.env.local
+
+# Git
+.git/
+.gitignore
+
+# Documentation and meta
+*.md
+docs/
