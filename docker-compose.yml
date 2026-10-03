@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: DistributedJobScheduler
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d DistributedJobScheduler"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: src/Api/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      # .NET automatically overrides appsettings.json with these environment variables
+      - ConnectionStrings__Postgres=Host=postgres;Database=DistributedJobScheduler;Username=postgres;Password=postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: src/Scheduler/Dockerfile
+    environment:
+      - ConnectionStrings__Postgres=Host=postgres;Database=DistributedJobScheduler;Username=postgres;Password=postgres
+      - ConnectionStrings__Redis=redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: src/Worker/Dockerfile
+    environment:
+      - ConnectionStrings__Postgres=Host=postgres;Database=DistributedJobScheduler;Username=postgres;Password=postgres
+      - ConnectionStrings__Redis=redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
