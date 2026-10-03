@@ -1,7 +1,30 @@
+
+
+using DistributedJobScheduler.Core.Infrastructure;
 using DistributedJobScheduler.Worker;
+using Npgsql;
+using StackExchange.Redis;
 
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddHostedService<Worker>();
+
+// 1. Connection Strings
+var pgConnectionString = builder.Configuration.GetConnectionString("Postgres") 
+    ?? "Host=localhost;Database=DistributedJobScheduler;Username=postgres;Password=postgres";
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") 
+    ?? "localhost:6379";
+
+// 2. Shared Connections
+builder.Services.AddSingleton(NpgsqlDataSource.Create(pgConnectionString));
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp => ConnectionMultiplexer.Connect(redisConnectionString));
+
+// 3. Repositories & Tracker
+builder.Services.AddSingleton<IJobRepository, PostgresJobRepository>();
+builder.Services.AddSingleton<IQueueProvider, RedisQueueProvider>();
+builder.Services.AddSingleton<ActiveJobTracker>(); // Singleton so both services share the exact same instance
+
+// 4. Background Services
+builder.Services.AddHostedService<HeartbeatService>();
+builder.Services.AddHostedService<JobExecutorService>();
 
 var host = builder.Build();
 host.Run();

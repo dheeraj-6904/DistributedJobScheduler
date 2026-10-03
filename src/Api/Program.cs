@@ -1,34 +1,70 @@
+using DistributedJobScheduler.Core.Domain;
+using DistributedJobScheduler.Core.Infrastructure;
+using Microsoft.AspNetCore.Mvc;
+using Npgsql;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// 1. Connection String
+var pgConnectionString = builder.Configuration.GetConnectionString("Postgres") 
+    ?? "Host=localhost;Database=DistributedJobScheduler;Username=postgres;Password=postgres";
+
+// 2. DI Setup (API doesn't need Redis, it only talks to Postgres)
+builder.Services.AddSingleton(NpgsqlDataSource.Create(pgConnectionString));
+builder.Services.AddSingleton<IJobRepository, PostgresJobRepository>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// 3. Endpoints
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
+// GET /jobs/{id}
+app.MapGet("/jobs/{id:guid}", async (Guid id, IJobRepository repo, CancellationToken token) =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    var job = await repo.GetJobAsync(id, token);
+    return job is not null ? Results.Ok(job) : Results.NotFound();
+});
 
-app.MapGet("/weatherforecast", () =>
+// POST /jobs
+app.MapPost("/jobs", async ([FromBody] CreateJobRequest req, IJobRepository repo, CancellationToken token) =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
+    // Ensure priority is valid
+    if (!JobPriority.TryCreate(req.Priority, out var priority))
+    {
+        return Results.BadRequest(new { Error = "Priority must be between 0 (highest) and 10 (lowest)." });
+    }
+
+    var job = new Job
+    {
+        Id = Guid.NewGuid(),
+        Type = req.Type,
+        Topic = Enum.TryParse<JobTopic>(req.Topic, true, out var t) ? t : JobTopic.Default,
+        Payload = req.Payload,
+        Priority = priority,
+        MaxAttempts = req.MaxAttempts > 0 ? req.MaxAttempts : 3,
+        ScheduledAt = req.ScheduledAt ?? DateTimeOffset.UtcNow,
+        CreatedAt = DateTimeOffset.UtcNow,
+        IdempotencyKey = req.IdempotencyKey
+    };
+
+    var created = await repo.CreateJobAsync(job, token);
+
+    if (!created)
+    {
+        return Results.Conflict(new { Error = $"A job with IdempotencyKey '{req.IdempotencyKey}' already exists." });
+    }
+
+    return Results.Created($"/jobs/{job.Id}", job);
 });
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+// DTO for incoming requests
+public record CreateJobRequest(
+    string Type, 
+    string Payload, 
+    string Topic = "Default", 
+    int Priority = 5, 
+    int MaxAttempts = 3,
+    DateTimeOffset? ScheduledAt = null,
+    string? IdempotencyKey = null
+);
