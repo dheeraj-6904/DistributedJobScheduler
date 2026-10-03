@@ -1,0 +1,126 @@
+{
+  "title": "Distributed Job Scheduler Dashboard",
+  "timezone": "browser",
+  "refresh": "5s",
+  "schemaVersion": 36,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Queue Backlog (Jobs Waiting in Redis)",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(jobs_queued_total) - sum(jobs_processed_total)",
+          "legendFormat": "Pending Jobs",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 20, "lineWidth": 2 }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Worker Throughput (Jobs Processed per Second)",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(jobs_processed_total[1m]))",
+          "legendFormat": "Jobs / sec",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 10, "lineWidth": 2 }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Avg Time Waiting in Queue (ms)",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(jobs_queue_time_milliseconds_sum[1m])) / sum(rate(jobs_queue_time_milliseconds_count[1m]))",
+          "legendFormat": "Queue Wait Time",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 10, "lineWidth": 2 },
+          "unit": "ms"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Avg Job Execution Time (ms)",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(jobs_execution_time_milliseconds_sum[1m])) / sum(rate(jobs_execution_time_milliseconds_count[1m]))",
+          "legendFormat": "Execution Time",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 10, "lineWidth": 2 },
+          "unit": "ms"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Avg Total Lifecycle Time (ms)",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(jobs_total_lifecycle_time_milliseconds_sum[1m])) / sum(rate(jobs_total_lifecycle_time_milliseconds_count[1m]))",
+          "legendFormat": "Total Time (API to Finished)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 10, "lineWidth": 2 },
+          "unit": "ms"
+        }
+      }
+    }
+  ]
+}

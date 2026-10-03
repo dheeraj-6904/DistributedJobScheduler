@@ -62,6 +62,13 @@ public sealed class JobExecutorService : BackgroundService
                 
                 _tracker.Add(job.Id);
 
+                // Record the time spent in queue/scheduler
+                var queueTimeMs = (DateTimeOffset.UtcNow - job.ScheduledAt).TotalMilliseconds;
+                if (queueTimeMs > 0)
+                {
+                    JobMetrics.JobQueueTime.Record(queueTimeMs);
+                }
+
                 // 4. EXECUTE THE WORK
                 _logger.LogInformation("Started executing Job {JobId} (Type: {Type})", job.Id, job.Type);
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -72,9 +79,16 @@ public sealed class JobExecutorService : BackgroundService
                 JobMetrics.JobExecutionTime.Record(stopwatch.ElapsedMilliseconds);
 
                 // 5. Execution finished successfully. Mark as Completed.
-                job.MarkAsCompleted("{\"status\":\"success\"}", DateTimeOffset.UtcNow);
+                var completedAt = DateTimeOffset.UtcNow;
+                job.MarkAsCompleted("{\"status\":\"success\"}", completedAt);
                 await _repository.UpdateJobAsync(job, stoppingToken);
                 
+                var lifecycleTimeMs = (completedAt - job.CreatedAt).TotalMilliseconds;
+                if (lifecycleTimeMs > 0)
+                {
+                    JobMetrics.JobTotalLifecycleTime.Record(lifecycleTimeMs);
+                }
+
                 _tracker.Remove(job.Id);
                 JobMetrics.JobsProcessed.Add(1);
                 _logger.LogInformation("Successfully completed Job {JobId}", job.Id);
@@ -93,8 +107,9 @@ public sealed class JobExecutorService : BackgroundService
     /// </summary>
     private async Task ProcessJobSimulatedAsync(Job job, CancellationToken token)
     {
-        // Simulate a job that takes anywhere from 1 to 3 seconds to complete
-        var randomDelay = new Random().Next(1000, 3000);
+        // Simulate a job that takes anywhere from 500ms to 1000ms to complete
+        // (This aligns with realistic times for sending emails, rendering PDFs, etc.)
+        var randomDelay = new Random().Next(500, 1000);
         await Task.Delay(randomDelay, token);
     }
 }
