@@ -1,0 +1,8 @@
+global:
+  scrape_interval: 5s # Scrape every 5 seconds for near real-time metrics
+
+scrape_configs:
+  - job_name: 'job_scheduler'
+    static_configs:
+      # Prometheus will scrape all 3 of our .NET services
+      - targets: ['api:8080', 'scheduler:8080', 'worker:8080']

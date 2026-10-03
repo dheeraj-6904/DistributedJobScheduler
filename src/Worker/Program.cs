@@ -5,7 +5,7 @@ using DistributedJobScheduler.Worker;
 using Npgsql;
 using StackExchange.Redis;
 
-var builder = Host.CreateApplicationBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 // 1. Connection Strings
 var pgConnectionString = builder.Configuration.GetConnectionString("Postgres") 
@@ -26,5 +26,10 @@ builder.Services.AddSingleton<ActiveJobTracker>(); // Singleton so both services
 builder.Services.AddHostedService<HeartbeatService>();
 builder.Services.AddHostedService<JobExecutorService>();
 
-var host = builder.Build();
-host.Run();
+// 5. Setup Telemetry
+builder.Services.AddJobSchedulerTelemetry();
+
+var app = builder.Build();
+app.MapPrometheusScrapingEndpoint();
+
+app.Run();

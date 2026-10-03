@@ -13,7 +13,11 @@ var pgConnectionString = builder.Configuration.GetConnectionString("Postgres")
 builder.Services.AddSingleton(NpgsqlDataSource.Create(pgConnectionString));
 builder.Services.AddSingleton<IJobRepository, PostgresJobRepository>();
 
+builder.Services.AddJobSchedulerTelemetry();
+
 var app = builder.Build();
+
+app.MapPrometheusScrapingEndpoint();
 
 // 3. Endpoints
 

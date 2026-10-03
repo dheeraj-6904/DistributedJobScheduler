@@ -16,6 +16,20 @@ public sealed class PostgresJobRepository : IJobRepository
         // Tells Dapper to map Enums to/from strings in the database automatically
         SqlMapper.AddTypeHandler(new EnumAsStringHandler<JobStatus>());
         SqlMapper.AddTypeHandler(new EnumAsStringHandler<JobTopic>());
+        SqlMapper.AddTypeHandler(new JobPriorityHandler());
+    }
+
+    private class JobPriorityHandler : SqlMapper.TypeHandler<JobPriority>
+    {
+        public override void SetValue(System.Data.IDbDataParameter parameter, JobPriority value)
+        {
+            parameter.Value = value.Value;
+        }
+
+        public override JobPriority Parse(object value)
+        {
+            return JobPriority.From(Convert.ToInt32(value));
+        }
     }
 
     public async Task<Job?> GetJobAsync(Guid id, CancellationToken cancellationToken)
@@ -33,14 +47,27 @@ public sealed class PostgresJobRepository : IJobRepository
                 Id, Type, Topic, Payload, Priority, Status, 
                 Attempts, MaxAttempts, ScheduledAt, CreatedAt, IdempotencyKey
             ) VALUES (
-                @Id, @Type, @Topic, @Payload::jsonb, @Priority, @Status, 
+                @Id, @Type, @Topic, @Payload::jsonb, @Priority, @StatusString, 
                 @Attempts, @MaxAttempts, @ScheduledAt, @CreatedAt, @IdempotencyKey
             ) ON CONFLICT (IdempotencyKey) DO NOTHING;";
 
         await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
         
-        // Pass the Job object directly to Dapper; it binds the properties to the @Parameters
-        var rowsAffected = await connection.ExecuteAsync(sql, job);
+        // Use an anonymous object to explicitly convert enum properties to strings
+        var rowsAffected = await connection.ExecuteAsync(sql, new 
+        {
+            job.Id,
+            job.Type,
+            Topic = job.Topic.ToString(),
+            job.Payload,
+            job.Priority,
+            StatusString = job.Status.ToString(),
+            job.Attempts,
+            job.MaxAttempts,
+            job.ScheduledAt,
+            job.CreatedAt,
+            job.IdempotencyKey
+        });
         
         // Returns true if inserted, false if the IdempotencyKey was a duplicate
         return rowsAffected > 0;
@@ -89,7 +116,7 @@ public sealed class PostgresJobRepository : IJobRepository
     {
         const string sql = @"
             UPDATE Jobs SET 
-                Status = @Status,
+                Status = @StatusString,
                 Attempts = @Attempts,
                 NextRetryAt = @NextRetryAt,
                 WorkerId = @WorkerId,
@@ -101,7 +128,20 @@ public sealed class PostgresJobRepository : IJobRepository
             WHERE Id = @Id;";
 
         await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
-        await connection.ExecuteAsync(sql, job);
+        
+        await connection.ExecuteAsync(sql, new 
+        {
+            StatusString = job.Status.ToString(),
+            job.Attempts,
+            job.NextRetryAt,
+            job.WorkerId,
+            job.LeaseUntil,
+            job.StartedAt,
+            job.CompletedAt,
+            job.Result,
+            job.Error,
+            job.Id
+        });
     }
 
     public async Task RenewLeasesAsync(IEnumerable<Guid> jobIds, DateTimeOffset newLeaseUntil, CancellationToken cancellationToken)

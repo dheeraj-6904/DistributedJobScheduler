@@ -33,6 +33,7 @@ public class DispatcherService : BackgroundService
                 foreach (var job in jobs)
                 {
                     await _queue.PushAsync(job, stoppingToken);
+                    JobMetrics.JobsQueued.Add(1);
                     _logger.LogInformation("Pushed Job {JobId} (Topic: {Topic}, Priority: {Priority}) to Redis.", job.Id, job.Topic, job.Priority);
                 }
 

@@ -64,13 +64,19 @@ public sealed class JobExecutorService : BackgroundService
 
                 // 4. EXECUTE THE WORK
                 _logger.LogInformation("Started executing Job {JobId} (Type: {Type})", job.Id, job.Type);
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                
                 await ProcessJobSimulatedAsync(job, stoppingToken);
+                
+                stopwatch.Stop();
+                JobMetrics.JobExecutionTime.Record(stopwatch.ElapsedMilliseconds);
 
                 // 5. Execution finished successfully. Mark as Completed.
                 job.MarkAsCompleted("{\"status\":\"success\"}", DateTimeOffset.UtcNow);
                 await _repository.UpdateJobAsync(job, stoppingToken);
                 
                 _tracker.Remove(job.Id);
+                JobMetrics.JobsProcessed.Add(1);
                 _logger.LogInformation("Successfully completed Job {JobId}", job.Id);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

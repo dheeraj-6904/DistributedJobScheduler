@@ -3,7 +3,7 @@ using DistributedJobScheduler.Scheduler;
 using Npgsql;
 using StackExchange.Redis;
 
-var builder = Host.CreateApplicationBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 // 1. Read connection strings (fallback to localhost defaults for easy local running)
 var pgConnectionString = builder.Configuration.GetConnectionString("Postgres") 
@@ -23,5 +23,10 @@ builder.Services.AddSingleton<IQueueProvider, RedisQueueProvider>();
 builder.Services.AddHostedService<DispatcherService>();
 builder.Services.AddHostedService<LeaseSweeperService>();
 
-var host = builder.Build();
-host.Run();
+// 5. Setup Telemetry
+builder.Services.AddJobSchedulerTelemetry();
+
+var app = builder.Build();
+app.MapPrometheusScrapingEndpoint();
+
+app.Run();
