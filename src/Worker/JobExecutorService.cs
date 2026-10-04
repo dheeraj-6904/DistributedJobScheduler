@@ -73,25 +73,53 @@ public sealed class JobExecutorService : BackgroundService
                 _logger.LogInformation("Started executing Job {JobId} (Type: {Type})", job.Id, job.Type);
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 
-                await ProcessJobSimulatedAsync(job, stoppingToken);
-                
-                stopwatch.Stop();
-                JobMetrics.JobExecutionTime.Record(stopwatch.ElapsedMilliseconds);
-
-                // 5. Execution finished successfully. Mark as Completed.
-                var completedAt = DateTimeOffset.UtcNow;
-                job.MarkAsCompleted("{\"status\":\"success\"}", completedAt);
-                await _repository.UpdateJobAsync(job, stoppingToken);
-                
-                var lifecycleTimeMs = (completedAt - job.CreatedAt).TotalMilliseconds;
-                if (lifecycleTimeMs > 0)
+                try
                 {
-                    JobMetrics.JobTotalLifecycleTime.Record(lifecycleTimeMs);
-                }
+                    await ProcessJobSimulatedAsync(job, stoppingToken);
+                    
+                    stopwatch.Stop();
+                    JobMetrics.JobExecutionTime.Record(stopwatch.ElapsedMilliseconds);
 
-                _tracker.Remove(job.Id);
-                JobMetrics.JobsProcessed.Add(1);
-                _logger.LogInformation("Successfully completed Job {JobId}", job.Id);
+                    // 5. Execution finished successfully. Mark as Completed.
+                    var completedAt = DateTimeOffset.UtcNow;
+                    job.MarkAsCompleted("{\"status\":\"success\"}", completedAt);
+                    await _repository.UpdateJobAsync(job, stoppingToken);
+                    
+                    var lifecycleTimeMs = (completedAt - job.CreatedAt).TotalMilliseconds;
+                    if (lifecycleTimeMs > 0)
+                    {
+                        JobMetrics.JobTotalLifecycleTime.Record(lifecycleTimeMs);
+                    }
+
+                    JobMetrics.JobsProcessed.Add(1);
+                    _logger.LogInformation("Successfully completed Job {JobId}", job.Id);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    stopwatch.Stop();
+                    _logger.LogError(ex, "Error occurred while executing Job {JobId}", job.Id);
+                    
+                    var nowTime = DateTimeOffset.UtcNow;
+                    if (job.HasRemainingAttempts)
+                    {
+                        // Exponential backoff based on Attempts
+                        var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, job.Attempts));
+                        job.MarkAsRetrying(ex.ToString(), nowTime.Add(backoffDelay));
+                        _logger.LogInformation("Job {JobId} failed and will retry at {NextRetryAt}", job.Id, job.NextRetryAt);
+                    }
+                    else
+                    {
+                        job.MarkAsFailed(ex.ToString(), nowTime);
+                        _logger.LogWarning("Job {JobId} has permanently failed after {Attempts} attempts", job.Id, job.Attempts);
+                    }
+                    
+                    await _repository.UpdateJobAsync(job, stoppingToken);
+                }
+                finally
+                {
+                    // Clean up active job tracking and cancel heartbeats immediately upon completion or failure
+                    _tracker.Remove(job.Id);
+                }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
