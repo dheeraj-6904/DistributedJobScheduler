@@ -62,6 +62,8 @@ app.MapPost("/jobs", async ([FromBody] CreateJobRequest req, IJobRepository repo
 
 app.Run();
 
+public partial class Program { }
+
 // DTO for incoming requests
 public record CreateJobRequest(
     string Type, 
