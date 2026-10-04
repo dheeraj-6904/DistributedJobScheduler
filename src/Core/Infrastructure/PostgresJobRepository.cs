@@ -99,7 +99,8 @@ public sealed class PostgresJobRepository : IJobRepository
         // Re-queues the job and increments attempts since the worker failed to complete it
         const string sql = @"
             UPDATE Jobs 
-            SET Status = 'Queued', Attempts = Attempts + 1, WorkerId = NULL, LeaseUntil = NULL 
+            SET Status = CASE WHEN Attempts + 1 >= MaxAttempts THEN 'Failed' ELSE 'Queued' END,
+                Attempts = LEAST(Attempts + 1, MaxAttempts), WorkerId = NULL, LeaseUntil = NULL 
             WHERE Id IN (
                 SELECT Id FROM Jobs 
                 WHERE Status = 'Running' AND LeaseUntil < NOW() 
