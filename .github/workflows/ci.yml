@@ -19,7 +19,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: "9.0.x"
 
       - name: Restore dependencies
         run: dotnet restore DistributedJobScheduler.sln
@@ -27,5 +27,8 @@ jobs:
       - name: Build solution
         run: dotnet build DistributedJobScheduler.sln --no-restore -c Release
 
-      - name: Run automated tests
-        run: dotnet test DistributedJobScheduler.sln --no-build -c Release --verbosity normal
+      - name: Run unit tests
+        run: dotnet test tests/UnitTests/DistributedJobScheduler.UnitTests.csproj --no-build -c Release --verbosity normal
+
+      - name: Run integration tests
+        run: dotnet test tests/IntegrationTests/DistributedJobScheduler.IntegrationTests.csproj --no-build -c Release --verbosity normal
