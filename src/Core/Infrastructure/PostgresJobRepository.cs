@@ -81,7 +81,8 @@ public sealed class PostgresJobRepository : IJobRepository
             SET Status = 'Queued' 
             WHERE Id IN (
                 SELECT Id FROM Jobs 
-                WHERE Status = 'Pending' AND ScheduledAt <= NOW() 
+                WHERE (Status = 'Pending' AND ScheduledAt <= NOW())
+                   OR (Status = 'Retrying' AND NextRetryAt <= NOW())
                 ORDER BY Priority ASC, ScheduledAt ASC 
                 LIMIT @BatchSize 
                 FOR UPDATE SKIP LOCKED

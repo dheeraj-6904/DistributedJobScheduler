@@ -2,6 +2,8 @@
 
 using DistributedJobScheduler.Core.Infrastructure;
 using DistributedJobScheduler.Worker;
+using DistributedJobScheduler.Worker.Handlers;
+using DistributedJobScheduler.Core.Execution;
 using Npgsql;
 using StackExchange.Redis;
 
@@ -17,11 +19,12 @@ var redisConnectionString = builder.Configuration.GetConnectionString("Redis")
 builder.Services.AddSingleton(NpgsqlDataSource.Create(pgConnectionString));
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp => ConnectionMultiplexer.Connect(redisConnectionString));
 
-// 3. Repositories & Tracker
+// 3. Repositories & Tracker & Handlers
 builder.Services.AddSingleton<IJobRepository, PostgresJobRepository>();
 builder.Services.AddSingleton<IQueueProvider, RedisQueueProvider>();
 builder.Services.AddSingleton<ActiveJobTracker>(); // Singleton so both services share the exact same instance
-
+builder.Services.AddSingleton<IJobHandlerFactory, DefaultJobHandlerFactory>();
+builder.Services.AddTransient<SimulatedJobHandler>();
 // 4. Background Services
 builder.Services.AddHostedService<HeartbeatService>();
 builder.Services.AddHostedService<JobExecutorService>();

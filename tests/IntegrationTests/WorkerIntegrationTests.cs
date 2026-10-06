@@ -1,5 +1,6 @@
 using DistributedJobScheduler.Core.Domain;
 using DistributedJobScheduler.Core.Infrastructure;
+using DistributedJobScheduler.IntegrationTests.TestHandlers;
 using DistributedJobScheduler.Worker;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
@@ -31,7 +32,7 @@ public class WorkerIntegrationTests : IAsyncLifetime
         var repo = new PostgresJobRepository(NpgsqlDataSource.Create(_fixture.PostgresConnectionString));
         var queue = new RedisQueueProvider(_fixture.RedisConnection);
         var tracker = new ActiveJobTracker();
-        var executor = new JobExecutorService(queue, repo, tracker, NullLogger<JobExecutorService>.Instance);
+        var executor = new JobExecutorService(queue, repo, tracker, new TestJobHandlerFactory(new SucceedingJobHandler()), NullLogger<JobExecutorService>.Instance);
         
         var jobId = Guid.NewGuid();
         var job = new Job
