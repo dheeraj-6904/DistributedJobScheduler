@@ -1,6 +1,6 @@
-# LetsGossip — Distributed Job Scheduler
+# Distributed Job Scheduler
 
-[![CI](https://github.com/dheeraj-6904/LetsGossip/actions/workflows/ci.yml/badge.svg)](https://github.com/dheeraj-6904/LetsGossip/actions/workflows/ci.yml)
+[![CI](https://github.com/dheeraj-6904/DistributedJobScheduler/actions/workflows/ci.yml/badge.svg)](https://github.com/dheeraj-6904/DistributedJobScheduler/actions/workflows/ci.yml)
 ![.NET](https://img.shields.io/badge/.NET-9.0-512BD4)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -89,8 +89,8 @@ Pending ──► Queued ──► Running ──► Completed
 ### Option 1 — Full stack with Docker Compose (recommended)
 
 ```bash
-git clone https://github.com/dheeraj-6904/LetsGossip.git
-cd LetsGossip
+git clone https://github.com/dheeraj-6904/DistributedJobScheduler.git
+cd DistributedJobScheduler
 docker compose up --build
 ```
 
@@ -239,15 +239,7 @@ To see the dashboard:
 1. Open Grafana and add Prometheus as a data source with the URL `http://prometheus:9090`.
 2. Import [`grafana-dashboard.json`](grafana-dashboard.json).
 
----
 
-## 🗺️ Roadmap
-
-- [ ] Pluggable `IJobHandler`s resolved by `job.Type` (execution is simulated today)
-- [ ] Re-dispatch `Retrying` jobs once `NextRetryAt` has passed
-- [ ] Worker topic subscriptions set through configuration
-- [ ] Job cancellation endpoint
-- [ ] Authentication on the API
 
 ---
 
