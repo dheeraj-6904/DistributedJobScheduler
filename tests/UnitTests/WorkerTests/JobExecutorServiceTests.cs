@@ -1,4 +1,5 @@
 using DistributedJobScheduler.Core.Domain;
+using DistributedJobScheduler.Core.Execution;
 using DistributedJobScheduler.Core.Infrastructure;
 using DistributedJobScheduler.Worker;
 using Microsoft.Extensions.Logging;
@@ -36,7 +37,11 @@ public class JobExecutorServiceTests
         repoMock.Setup(r => r.GetJobAsync(jobId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(queuedJob);
 
-        var service = new JobExecutorService(queueMock.Object, repoMock.Object, tracker, loggerMock.Object);
+        var handlerMock = new Mock<IJobHandler>();
+        var factoryMock = new Mock<IJobHandlerFactory>();
+        factoryMock.Setup(f => f.GetHandler(It.IsAny<string>())).Returns(handlerMock.Object);
+
+        var service = new JobExecutorService(queueMock.Object, repoMock.Object, tracker, factoryMock.Object, loggerMock.Object);
 
         var cts = new CancellationTokenSource();
         var executeTask = service.StartAsync(cts.Token);

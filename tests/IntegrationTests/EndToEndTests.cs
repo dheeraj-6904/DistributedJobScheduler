@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using DistributedJobScheduler.Core.Domain;
 using DistributedJobScheduler.Core.Infrastructure;
+using DistributedJobScheduler.IntegrationTests.TestHandlers;
 using DistributedJobScheduler.Scheduler;
 using DistributedJobScheduler.Worker;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -60,7 +61,7 @@ public class EndToEndTests : IAsyncLifetime
         await using var workerRedis = await StackExchange.Redis.ConnectionMultiplexer.ConnectAsync(_fixture.RedisContainer.GetConnectionString());
         var workerQueue = new RedisQueueProvider(workerRedis);
         var tracker = new ActiveJobTracker();
-        var executor = new JobExecutorService(workerQueue, repo, tracker, NullLogger<JobExecutorService>.Instance);
+        var executor = new JobExecutorService(workerQueue, repo, tracker, new TestJobHandlerFactory(new SucceedingJobHandler()), NullLogger<JobExecutorService>.Instance);
         var executorTask = executor.StartAsync(cts.Token);
 
         try

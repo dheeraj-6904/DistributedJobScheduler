@@ -1,5 +1,7 @@
 using DistributedJobScheduler.Core.Domain;
 using DistributedJobScheduler.Core.Infrastructure;
+using DistributedJobScheduler.Worker.Handlers;
+using DistributedJobScheduler.Core.Execution;
 
 namespace DistributedJobScheduler.Worker;
 
@@ -12,13 +14,15 @@ public sealed class JobExecutorService : BackgroundService
     private readonly IJobRepository _repository;
     private readonly ActiveJobTracker _tracker;
     private readonly ILogger<JobExecutorService> _logger;
+    private readonly IJobHandlerFactory _handlerFactory;
     private readonly string _workerId;
 
-    public JobExecutorService(IQueueProvider queue, IJobRepository repository, ActiveJobTracker tracker, ILogger<JobExecutorService> logger)
+    public JobExecutorService(IQueueProvider queue, IJobRepository repository, ActiveJobTracker tracker, IJobHandlerFactory handlerFactory, ILogger<JobExecutorService> logger)
     {
         _queue = queue;
         _repository = repository;
         _tracker = tracker;
+        _handlerFactory = handlerFactory;
         _logger = logger;
         
         // Generate a unique ID for this instance so we can track which machine took the job
@@ -75,7 +79,8 @@ public sealed class JobExecutorService : BackgroundService
                 
                 try
                 {
-                    await ProcessJobSimulatedAsync(job, stoppingToken);
+                    var handler = _handlerFactory.GetHandler(job.Type);
+                    await handler.HandleAsync(job, stoppingToken);
                     
                     stopwatch.Stop();
                     JobMetrics.JobExecutionTime.Record(stopwatch.ElapsedMilliseconds);
@@ -127,17 +132,5 @@ public sealed class JobExecutorService : BackgroundService
                 await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
             }
         }
-    }
-
-    /// <summary>
-    /// Simulates the actual business logic execution.
-    /// In reality, you would use a Factory to resolve an IJobHandler based on job.Type.
-    /// </summary>
-    private async Task ProcessJobSimulatedAsync(Job job, CancellationToken token)
-    {
-        // Simulate a job that takes anywhere from 500ms to 1000ms to complete
-        // (This aligns with realistic times for sending emails, rendering PDFs, etc.)
-        var randomDelay = new Random().Next(500, 1000);
-        await Task.Delay(randomDelay, token);
     }
 }
