@@ -34,6 +34,7 @@ public class LeaseSweeperService : BackgroundService
                     if (job.Status == Core.Domain.JobStatus.Queued)
                     {
                         await _queue.PushAsync(job, stoppingToken);
+                        JobMetrics.JobsQueued.Add(1);
                         _logger.LogWarning("Worker died while processing Job {JobId}. Re-queued for retry {Attempt}/{MaxAttempts}.", job.Id, job.Attempts, job.MaxAttempts);
                     }
                     else if (job.Status == Core.Domain.JobStatus.Failed)

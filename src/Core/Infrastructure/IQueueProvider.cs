@@ -19,4 +19,9 @@ public interface IQueueProvider
     /// pops the one with the lowest score, and returns its JobId.
     /// </summary>
     Task<Guid?> PopAsync(IEnumerable<JobTopic> topics, TimeSpan timeout, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Returns the number of jobs currently waiting in the Redis Sorted Set for the specified topic.
+    /// </summary>
+    Task<long> GetQueueLengthAsync(JobTopic topic, CancellationToken cancellationToken = default);
 }
