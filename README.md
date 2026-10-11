@@ -3,6 +3,7 @@
 [![CI](https://github.com/dheeraj-6904/DistributedJobScheduler/actions/workflows/ci.yml/badge.svg)](https://github.com/dheeraj-6904/DistributedJobScheduler/actions/workflows/ci.yml)
 ![.NET](https://img.shields.io/badge/.NET-9.0-512BD4)
 ![License](https://img.shields.io/badge/license-MIT-green)
+[![Architecture diagram](https://gitdiagram.com/diagram-badge.svg)](https://gitdiagram.com/dheeraj-6904/distributedjobscheduler?utm_source=readme&utm_medium=badge)
 
 A fault-tolerant, horizontally scalable job scheduler built on **.NET 9**, **PostgreSQL**, and **Redis**.
 
@@ -238,8 +239,6 @@ To see the dashboard:
 
 1. Open Grafana and add Prometheus as a data source with the URL `http://prometheus:9090`.
 2. Import [`grafana-dashboard.json`](grafana-dashboard.json).
-
-
 
 ---
 
