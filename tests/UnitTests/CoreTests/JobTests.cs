@@ -22,6 +22,19 @@ public class JobTests
     }
 
     [Fact]
+    public void MarkAsQueued_SetsCorrectProperties()
+    {
+        var job = new Job { Id = Guid.NewGuid(), MaxAttempts = 3 };
+        job.MarkAsRunning("w1", DateTimeOffset.UtcNow.AddMinutes(1), DateTimeOffset.UtcNow);
+
+        job.MarkAsQueued();
+
+        Assert.Equal(JobStatus.Queued, job.Status);
+        Assert.Null(job.WorkerId);
+        Assert.Null(job.LeaseUntil);
+    }
+
+    [Fact]
     public void MarkAsCompleted_SetsCorrectProperties()
     {
         var job = new Job { Id = Guid.NewGuid(), MaxAttempts = 3 };

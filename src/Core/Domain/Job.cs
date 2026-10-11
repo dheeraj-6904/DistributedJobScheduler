@@ -94,6 +94,16 @@ public sealed class Job
     // -------------------------------------------------------------------------
 
     /// <summary>
+    /// Transitions the job to Queued state when pushed to the Redis queue.
+    /// </summary>
+    public void MarkAsQueued()
+    {
+        Status = JobStatus.Queued;
+        WorkerId = null;
+        LeaseUntil = null;
+    }
+
+    /// <summary>
     /// Transitions the job to Running state when a worker claims it.
     /// </summary>
     public void MarkAsRunning(string workerId, DateTimeOffset leaseUntil, DateTimeOffset now)

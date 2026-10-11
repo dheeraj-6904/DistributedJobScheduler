@@ -19,9 +19,10 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp => ConnectionMultiplexe
 builder.Services.AddSingleton<IJobRepository, PostgresJobRepository>();
 builder.Services.AddSingleton<IQueueProvider, RedisQueueProvider>();
 
-// 4. Register our two Background Loops
+// 4. Register our Background Loops
 builder.Services.AddHostedService<DispatcherService>();
 builder.Services.AddHostedService<LeaseSweeperService>();
+builder.Services.AddHostedService<QueueMetricsCollectorService>();
 
 // 5. Setup Telemetry
 builder.Services.AddJobSchedulerTelemetry();

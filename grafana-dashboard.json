@@ -15,7 +15,7 @@
       },
       "targets": [
         {
-          "expr": "sum(jobs_queued_total) - sum(jobs_processed_total)",
+          "expr": "sum(max by (topic) (jobs_queue_backlog))",
           "legendFormat": "Pending Jobs",
           "refId": "A"
         }
@@ -29,7 +29,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Worker Throughput (Jobs Processed per Second)",
+      "title": "Worker Throughput (Total Cluster & Per-Worker Jobs/sec)",
       "gridPos": {
         "h": 8,
         "w": 6,
@@ -39,8 +39,13 @@
       "targets": [
         {
           "expr": "sum(rate(jobs_processed_total[1m]))",
-          "legendFormat": "Jobs / sec",
+          "legendFormat": "Total Cluster (Jobs/sec)",
           "refId": "A"
+        },
+        {
+          "expr": "rate(jobs_processed_total[1m])",
+          "legendFormat": "Worker {{instance}}",
+          "refId": "B"
         }
       ],
       "fieldConfig": {
@@ -76,7 +81,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Avg Job Execution Time (ms)",
+      "title": "Avg Job Execution Time (Cluster & Per-Worker ms)",
       "gridPos": {
         "h": 8,
         "w": 6,
@@ -86,8 +91,13 @@
       "targets": [
         {
           "expr": "sum(rate(jobs_execution_time_milliseconds_sum[1m])) / sum(rate(jobs_execution_time_milliseconds_count[1m]))",
-          "legendFormat": "Execution Time",
+          "legendFormat": "Cluster Avg",
           "refId": "A"
+        },
+        {
+          "expr": "rate(jobs_execution_time_milliseconds_sum[1m]) / rate(jobs_execution_time_milliseconds_count[1m])",
+          "legendFormat": "Worker {{instance}}",
+          "refId": "B"
         }
       ],
       "fieldConfig": {
