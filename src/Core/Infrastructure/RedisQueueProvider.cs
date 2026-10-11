@@ -90,6 +90,13 @@ public sealed class RedisQueueProvider : IQueueProvider
         return await _db.SortedSetLengthAsync(queueKey);
     }
 
+    public async Task<bool> ContainsAsync(JobTopic topic, Guid jobId, CancellationToken cancellationToken = default)
+    {
+        string queueKey = GetQueueKey(topic);
+        var score = await _db.SortedSetScoreAsync(queueKey, jobId.ToString());
+        return score.HasValue;
+    }
+
     private static string GetQueueKey(JobTopic topic)
     {
         // Converts Enum "CpuIntensive" -> "cpuintensive" -> "jobs:ready:cpuintensive"

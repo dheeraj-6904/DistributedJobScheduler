@@ -45,10 +45,10 @@ public sealed class PostgresJobRepository : IJobRepository
         const string sql = @"
             INSERT INTO Jobs (
                 Id, Type, Topic, Payload, Priority, Status, 
-                Attempts, MaxAttempts, ScheduledAt, CreatedAt, IdempotencyKey
+                Attempts, MaxAttempts, ScheduledAt, CreatedAt, IdempotencyKey, QueuedAt
             ) VALUES (
                 @Id, @Type, @Topic, @Payload::jsonb, @Priority, @StatusString, 
-                @Attempts, @MaxAttempts, @ScheduledAt, @CreatedAt, @IdempotencyKey
+                @Attempts, @MaxAttempts, @ScheduledAt, @CreatedAt, @IdempotencyKey, @QueuedAt
             ) ON CONFLICT (IdempotencyKey) DO NOTHING;";
 
         await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
@@ -66,7 +66,8 @@ public sealed class PostgresJobRepository : IJobRepository
             job.MaxAttempts,
             job.ScheduledAt,
             job.CreatedAt,
-            job.IdempotencyKey
+            job.IdempotencyKey,
+            job.QueuedAt
         });
         
         // Returns true if inserted, false if the IdempotencyKey was a duplicate
@@ -78,7 +79,7 @@ public sealed class PostgresJobRepository : IJobRepository
         // The magic SKIP LOCKED query for the Scheduler
         const string sql = @"
             UPDATE Jobs 
-            SET Status = 'Queued' 
+            SET Status = 'Queued', QueuedAt = NOW() 
             WHERE Id IN (
                 SELECT Id FROM Jobs 
                 WHERE (Status = 'Pending' AND ScheduledAt <= NOW())
@@ -101,7 +102,8 @@ public sealed class PostgresJobRepository : IJobRepository
         const string sql = @"
             UPDATE Jobs 
             SET Status = CASE WHEN Attempts + 1 >= MaxAttempts THEN 'Failed' ELSE 'Queued' END,
-                Attempts = LEAST(Attempts + 1, MaxAttempts), WorkerId = NULL, LeaseUntil = NULL 
+                Attempts = LEAST(Attempts + 1, MaxAttempts), WorkerId = NULL, LeaseUntil = NULL,
+                QueuedAt = CASE WHEN Attempts + 1 >= MaxAttempts THEN NULL ELSE NOW() END 
             WHERE Id IN (
                 SELECT Id FROM Jobs 
                 WHERE Status = 'Running' AND LeaseUntil < NOW() 
@@ -126,7 +128,8 @@ public sealed class PostgresJobRepository : IJobRepository
                 StartedAt = @StartedAt,
                 CompletedAt = @CompletedAt,
                 Result = @Result::jsonb,
-                Error = @Error
+                Error = @Error,
+                QueuedAt = @QueuedAt
             WHERE Id = @Id;";
 
         await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
@@ -142,6 +145,7 @@ public sealed class PostgresJobRepository : IJobRepository
             job.CompletedAt,
             job.Result,
             job.Error,
+            job.QueuedAt,
             job.Id
         });
     }
@@ -155,6 +159,43 @@ public sealed class PostgresJobRepository : IJobRepository
 
         await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
         await connection.ExecuteAsync(sql, new { JobIds = jobIds.ToList(), NewLeaseUntil = newLeaseUntil });
+    }
+
+    public async Task RollbackToPendingAsync(IEnumerable<Guid> jobIds, CancellationToken cancellationToken)
+    {
+        const string sql = @"
+            UPDATE Jobs 
+            SET Status = 'Pending', QueuedAt = NULL 
+            WHERE Id = ANY(@JobIds) AND Status = 'Queued';";
+
+        await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
+        await connection.ExecuteAsync(sql, new { JobIds = jobIds.ToList() });
+    }
+
+    public async Task<IReadOnlyList<Job>> GetStaleQueuedJobsAsync(DateTimeOffset cutoff, int batchSize, CancellationToken cancellationToken)
+    {
+        const string sql = @"
+            SELECT * FROM Jobs 
+            WHERE Status = 'Queued' 
+              AND (QueuedAt IS NULL OR QueuedAt < @Cutoff)
+            ORDER BY Priority ASC, CreatedAt ASC 
+            LIMIT @BatchSize 
+            FOR UPDATE SKIP LOCKED;";
+
+        await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
+        var jobs = await connection.QueryAsync<Job>(sql, new { Cutoff = cutoff, BatchSize = batchSize });
+        return jobs.AsList();
+    }
+
+    public async Task UpdateQueuedAtAsync(IEnumerable<Guid> jobIds, DateTimeOffset queuedAt, CancellationToken cancellationToken)
+    {
+        const string sql = @"
+            UPDATE Jobs 
+            SET QueuedAt = @QueuedAt 
+            WHERE Id = ANY(@JobIds);";
+
+        await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
+        await connection.ExecuteAsync(sql, new { JobIds = jobIds.ToList(), QueuedAt = queuedAt });
     }
 }
 

@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS Jobs (
     CompletedAt TIMESTAMPTZ,
     IdempotencyKey VARCHAR(255) UNIQUE,
     Result JSONB,
-    Error TEXT
+    Error TEXT,
+    QueuedAt TIMESTAMPTZ
 );
 
 -- Index for the Scheduler's fast SKIP LOCKED query
@@ -29,3 +30,8 @@ WHERE Status = 'Pending';
 CREATE INDEX IF NOT EXISTS IDX_Jobs_LeaseSweeper 
 ON Jobs (LeaseUntil) 
 WHERE Status = 'Running';
+
+-- Index for the Reconciliation Sweeper to find stranded queued jobs
+CREATE INDEX IF NOT EXISTS IDX_Jobs_QueuedReconciliation
+ON Jobs (QueuedAt)
+WHERE Status = 'Queued';

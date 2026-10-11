@@ -88,6 +88,12 @@ public sealed class Job
     /// <summary>Error message or stack trace from the last failed attempt.</summary>
     public string? Error { get; private set; }
 
+    /// <summary>
+    /// When the job was pushed to the Redis queue.
+    /// Used by reconciliation sweeper to identify stranded jobs.
+    /// </summary>
+    public DateTimeOffset? QueuedAt { get; private set; }
+
     // -------------------------------------------------------------------------
     // State transitions — all mutation goes through explicit methods
     // so invalid transitions are impossible from the outside.
@@ -96,11 +102,23 @@ public sealed class Job
     /// <summary>
     /// Transitions the job to Queued state when pushed to the Redis queue.
     /// </summary>
-    public void MarkAsQueued()
+    public void MarkAsQueued(DateTimeOffset? now = null)
     {
         Status = JobStatus.Queued;
         WorkerId = null;
         LeaseUntil = null;
+        QueuedAt = now ?? DateTimeOffset.UtcNow;
+    }
+
+    /// <summary>
+    /// Rolls back the job to Pending state (e.g. when Redis push fails).
+    /// </summary>
+    public void MarkAsPending()
+    {
+        Status = JobStatus.Pending;
+        WorkerId = null;
+        LeaseUntil = null;
+        QueuedAt = null;
     }
 
     /// <summary>

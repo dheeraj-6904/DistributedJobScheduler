@@ -29,17 +29,55 @@ public class DispatcherService : BackgroundService
                 // Pull up to 50 ready jobs at a time. 
                 // The DB query uses SKIP LOCKED so multiple schedulers can run in parallel without conflicts.
                 var jobs = await _repository.DequeueReadyJobsAsync(batchSize: 50, stoppingToken);
+                bool hadFailures = false;
                 
-                foreach (var job in jobs)
+                for (int i = 0; i < jobs.Count; i++)
                 {
-                    await _queue.PushAsync(job, stoppingToken);
-                    JobMetrics.JobsQueued.Add(1);
-                    _logger.LogInformation("Pushed Job {JobId} (Topic: {Topic}, Priority: {Priority}) to Redis.", job.Id, job.Topic, job.Priority);
+                    var job = jobs[i];
+                    bool pushed = false;
+
+                    // Immediate retry: try up to 3 attempts with brief backoff
+                    for (int attempt = 1; attempt <= 3; attempt++)
+                    {
+                        try
+                        {
+                            await _queue.PushAsync(job, stoppingToken);
+                            JobMetrics.JobsQueued.Add(1);
+                            _logger.LogInformation("Pushed Job {JobId} (Topic: {Topic}, Priority: {Priority}) to Redis.", job.Id, job.Topic, job.Priority);
+                            pushed = true;
+                            break;
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException)
+                        {
+                            _logger.LogWarning(ex, "Failed to push Job {JobId} to Redis (attempt {Attempt}/3).", job.Id, attempt);
+                            if (attempt < 3)
+                            {
+                                await Task.Delay(100 * attempt, stoppingToken);
+                            }
+                        }
+                    }
+
+                    if (!pushed)
+                    {
+                        hadFailures = true;
+                        var unpushedJobs = jobs.Skip(i).ToList();
+                        var unpushedIds = unpushedJobs.Select(j => j.Id).ToList();
+
+                        _logger.LogError("Failed to push Job {JobId} to Redis after retries. Rolling back {Count} unpushed jobs to Pending.", job.Id, unpushedIds.Count);
+
+                        await _repository.RollbackToPendingAsync(unpushedIds, stoppingToken);
+                        foreach (var unpushed in unpushedJobs)
+                        {
+                            unpushed.MarkAsPending();
+                        }
+
+                        break;
+                    }
                 }
 
-                // If no jobs were found, sleep for 2 seconds to avoid hammering the database.
-                // If jobs were found, we loop immediately to drain the queue fast.
-                if (jobs.Count == 0)
+                // If no jobs were found or if Redis failed, sleep to avoid hammering resources.
+                // If all jobs were pushed successfully, loop immediately to drain the queue fast.
+                if (jobs.Count == 0 || hadFailures)
                 {
                     await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
                 }

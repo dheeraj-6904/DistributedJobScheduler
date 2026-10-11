@@ -37,4 +37,20 @@ public interface IJobRepository
     /// Extends leases for a batch of running jobs. Used by the worker heartbeat.
     /// </summary>
     Task RenewLeasesAsync(IEnumerable<Guid> jobIds, DateTimeOffset newLeaseUntil, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Rolls back jobs to Pending status (e.g. after Redis push failures).
+    /// </summary>
+    Task RollbackToPendingAsync(IEnumerable<Guid> jobIds, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Finds jobs marked Queued whose QueuedAt is older than the cutoff (or null).
+    /// Uses FOR UPDATE SKIP LOCKED to prevent concurrent schedulers from claiming the same jobs.
+    /// </summary>
+    Task<IReadOnlyList<Job>> GetStaleQueuedJobsAsync(DateTimeOffset cutoff, int batchSize, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Updates the QueuedAt timestamp for a batch of jobs.
+    /// </summary>
+    Task UpdateQueuedAtAsync(IEnumerable<Guid> jobIds, DateTimeOffset queuedAt, CancellationToken cancellationToken);
 }

@@ -35,6 +35,32 @@ public class JobTests
     }
 
     [Fact]
+    public void MarkAsQueued_SetsQueuedAtTimestamp()
+    {
+        var job = new Job { Id = Guid.NewGuid(), MaxAttempts = 3 };
+        var now = DateTimeOffset.UtcNow;
+
+        job.MarkAsQueued(now);
+
+        Assert.Equal(JobStatus.Queued, job.Status);
+        Assert.Equal(now, job.QueuedAt);
+    }
+
+    [Fact]
+    public void MarkAsPending_ResetsStatusAndClearsQueuedAt()
+    {
+        var job = new Job { Id = Guid.NewGuid(), MaxAttempts = 3 };
+        job.MarkAsQueued(DateTimeOffset.UtcNow);
+
+        job.MarkAsPending();
+
+        Assert.Equal(JobStatus.Pending, job.Status);
+        Assert.Null(job.QueuedAt);
+        Assert.Null(job.WorkerId);
+        Assert.Null(job.LeaseUntil);
+    }
+
+    [Fact]
     public void MarkAsCompleted_SetsCorrectProperties()
     {
         var job = new Job { Id = Guid.NewGuid(), MaxAttempts = 3 };

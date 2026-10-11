@@ -28,19 +28,51 @@ public class LeaseSweeperService : BackgroundService
             {
                 var resetJobs = await _repository.SweepExpiredLeasesAsync(stoppingToken);
 
-                foreach (var job in resetJobs)
+                var queuedJobs = resetJobs.Where(j => j.Status == Core.Domain.JobStatus.Queued).ToList();
+                for (int i = 0; i < queuedJobs.Count; i++)
                 {
-                    // If the job didn't hit MaxAttempts, the repo marked it as Queued. Push it back to Redis.
-                    if (job.Status == Core.Domain.JobStatus.Queued)
+                    var job = queuedJobs[i];
+                    bool pushed = false;
+
+                    for (int attempt = 1; attempt <= 3; attempt++)
                     {
-                        await _queue.PushAsync(job, stoppingToken);
-                        JobMetrics.JobsQueued.Add(1);
-                        _logger.LogWarning("Worker died while processing Job {JobId}. Re-queued for retry {Attempt}/{MaxAttempts}.", job.Id, job.Attempts, job.MaxAttempts);
+                        try
+                        {
+                            await _queue.PushAsync(job, stoppingToken);
+                            JobMetrics.JobsQueued.Add(1);
+                            _logger.LogWarning("Worker died while processing Job {JobId}. Re-queued for retry {Attempt}/{MaxAttempts}.", job.Id, job.Attempts, job.MaxAttempts);
+                            pushed = true;
+                            break;
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException)
+                        {
+                            _logger.LogWarning(ex, "Failed to re-queue swept Job {JobId} to Redis (attempt {Attempt}/3).", job.Id, attempt);
+                            if (attempt < 3)
+                            {
+                                await Task.Delay(100 * attempt, stoppingToken);
+                            }
+                        }
                     }
-                    else if (job.Status == Core.Domain.JobStatus.Failed)
+
+                    if (!pushed)
                     {
-                        _logger.LogError("Job {JobId} failed permanently after {MaxAttempts} attempts due to worker timeouts.", job.Id, job.MaxAttempts);
+                        var unpushedJobs = queuedJobs.Skip(i).ToList();
+                        var unpushedIds = unpushedJobs.Select(j => j.Id).ToList();
+                        _logger.LogError("Failed to re-queue swept Job {JobId} to Redis after retries. Rolling back {Count} jobs to Pending.", job.Id, unpushedIds.Count);
+
+                        await _repository.RollbackToPendingAsync(unpushedIds, stoppingToken);
+                        foreach (var unpushed in unpushedJobs)
+                        {
+                            unpushed.MarkAsPending();
+                        }
+
+                        break;
                     }
+                }
+
+                foreach (var job in resetJobs.Where(j => j.Status == Core.Domain.JobStatus.Failed))
+                {
+                    _logger.LogError("Job {JobId} failed permanently after {MaxAttempts} attempts due to worker timeouts.", job.Id, job.MaxAttempts);
                 }
 
                 // Sweeper doesn't need to run constantly. Every 10 seconds is plenty.

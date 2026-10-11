@@ -24,4 +24,9 @@ public interface IQueueProvider
     /// Returns the number of jobs currently waiting in the Redis Sorted Set for the specified topic.
     /// </summary>
     Task<long> GetQueueLengthAsync(JobTopic topic, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Checks whether a job is currently present in the Redis Sorted Set for the specified topic.
+    /// </summary>
+    Task<bool> ContainsAsync(JobTopic topic, Guid jobId, CancellationToken cancellationToken = default);
 }

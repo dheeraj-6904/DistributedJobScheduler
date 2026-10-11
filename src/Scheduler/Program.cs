@@ -23,6 +23,7 @@ builder.Services.AddSingleton<IQueueProvider, RedisQueueProvider>();
 builder.Services.AddHostedService<DispatcherService>();
 builder.Services.AddHostedService<LeaseSweeperService>();
 builder.Services.AddHostedService<QueueMetricsCollectorService>();
+builder.Services.AddHostedService<QueueReconciliationService>();
 
 // 5. Setup Telemetry
 builder.Services.AddJobSchedulerTelemetry();
