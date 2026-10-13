@@ -9,8 +9,8 @@
       "title": "Queue Backlog (Jobs Waiting in Redis)",
       "gridPos": {
         "h": 8,
-        "w": 24,
-        "x": 0,
+        "w": 12,
+        "x": 12,
         "y": 0
       },
       "targets": [
@@ -29,23 +29,28 @@
     },
     {
       "type": "timeseries",
-      "title": "Worker Throughput (Total Cluster & Per-Worker Jobs/sec)",
+      "title": "Worker Throughput (Jobs/sec: Queued In vs Processed)",
       "gridPos": {
         "h": 8,
-        "w": 6,
+        "w": 12,
         "x": 0,
-        "y": 8
+        "y": 0
       },
       "targets": [
         {
           "expr": "sum(rate(jobs_processed_total[1m]))",
-          "legendFormat": "Total Cluster (Jobs/sec)",
+          "legendFormat": "Processed - Total Cluster (Jobs/sec)",
           "refId": "A"
+        },
+        {
+          "expr": "sum(rate(jobs_queued_total[1m]))",
+          "legendFormat": "Queued In - Total (Jobs/sec)",
+          "refId": "B"
         },
         {
           "expr": "rate(jobs_processed_total[1m])",
           "legendFormat": "Worker {{instance}}",
-          "refId": "B"
+          "refId": "C"
         }
       ],
       "fieldConfig": {
@@ -60,8 +65,8 @@
       "title": "Avg Time Waiting in Queue (ms)",
       "gridPos": {
         "h": 8,
-        "w": 6,
-        "x": 6,
+        "w": 8,
+        "x": 0,
         "y": 8
       },
       "targets": [
@@ -84,8 +89,8 @@
       "title": "Avg Job Execution Time (Cluster & Per-Worker ms)",
       "gridPos": {
         "h": 8,
-        "w": 6,
-        "x": 12,
+        "w": 8,
+        "x": 8,
         "y": 8
       },
       "targets": [
@@ -113,8 +118,8 @@
       "title": "Avg Total Lifecycle Time (ms)",
       "gridPos": {
         "h": 8,
-        "w": 6,
-        "x": 18,
+        "w": 8,
+        "x": 16,
         "y": 8
       },
       "targets": [
