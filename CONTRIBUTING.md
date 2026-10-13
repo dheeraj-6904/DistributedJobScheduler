@@ -1,4 +1,4 @@
-# Contributing to LetsGossip
+# Contributing to this project
 
 First off, thank you for considering contributing to LetsGossip! It's people like you that make this tool great.
 
