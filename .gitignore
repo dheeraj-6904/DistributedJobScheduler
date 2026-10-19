@@ -22,6 +22,7 @@ obj/
 
 ## Visual Studio Code
 .vscode/
+.vs/
 
 ## Logs
 *.log
