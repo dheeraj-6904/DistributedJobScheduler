@@ -23,5 +23,22 @@ public class JobMetricsTests
     {
         Assert.NotNull(JobMetrics.QueueBacklog);
         Assert.Equal("jobs.queue_backlog", JobMetrics.QueueBacklog.Name);
+
+        Assert.NotNull(JobMetrics.JobsInFlight);
+        Assert.Equal("jobs.in_flight", JobMetrics.JobsInFlight.Name);
+    }
+
+    [Fact]
+    public void IncrementAndDecrementInFlight_TracksCountThreadSafely()
+    {
+        var baseline = JobMetrics.GetInFlightCount();
+
+        JobMetrics.IncrementInFlight();
+        JobMetrics.IncrementInFlight();
+        Assert.Equal(baseline + 2, JobMetrics.GetInFlightCount());
+
+        JobMetrics.DecrementInFlight();
+        JobMetrics.DecrementInFlight();
+        Assert.Equal(baseline, JobMetrics.GetInFlightCount());
     }
 }

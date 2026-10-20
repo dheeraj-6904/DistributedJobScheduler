@@ -136,6 +136,34 @@
           "unit": "ms"
         }
       }
+    },
+    {
+      "type": "timeseries",
+      "title": "In-Flight Jobs per Worker",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "sum(jobs_in_flight)",
+          "legendFormat": "Total Cluster In-Flight",
+          "refId": "A"
+        },
+        {
+          "expr": "jobs_in_flight",
+          "legendFormat": "Worker {{instance}}",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 15, "lineWidth": 2 }
+        }
+      }
     }
   ]
 }

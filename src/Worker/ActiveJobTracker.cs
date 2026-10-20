@@ -10,6 +10,8 @@ public sealed class ActiveJobTracker
     // A ConcurrentDictionary used as a ConcurrentHashSet
     private readonly ConcurrentDictionary<Guid, byte> _activeJobs = new();
 
+    public int Count => _activeJobs.Count;
+
     public void Add(Guid jobId) => _activeJobs.TryAdd(jobId, 0);
     public void Remove(Guid jobId) => _activeJobs.TryRemove(jobId, out _);
     

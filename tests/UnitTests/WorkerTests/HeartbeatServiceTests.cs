@@ -15,17 +15,26 @@ public class HeartbeatServiceTests
         var repoMock = new Mock<IJobRepository>();
         var loggerMock = new Mock<ILogger<HeartbeatService>>();
 
-        var jobId = Guid.NewGuid();
-        tracker.Add(jobId);
+        var jobId1 = Guid.NewGuid();
+        var jobId2 = Guid.NewGuid();
+        var jobId3 = Guid.NewGuid();
+        tracker.Add(jobId1);
+        tracker.Add(jobId2);
+        tracker.Add(jobId3);
 
-        var service = new HeartbeatService(tracker, repoMock.Object, loggerMock.Object);
+        var service = new HeartbeatService(tracker, repoMock.Object, loggerMock.Object, TimeSpan.FromMilliseconds(50));
 
-        var cts = new CancellationTokenSource();
-        var executeTask = service.StartAsync(cts.Token);
-        await Task.Delay(200); // let heartbeat run once
-        cts.Cancel();
-        try { await executeTask; } catch (OperationCanceledException) {}
+        using var cts = new CancellationTokenSource();
+        await service.StartAsync(cts.Token);
+        await Task.Delay(150);
+        await cts.CancelAsync();
+        await service.StopAsync(CancellationToken.None);
 
-        repoMock.Verify(r => r.RenewLeasesAsync(It.Is<IReadOnlyList<Guid>>(l => l.Contains(jobId)), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        repoMock.Verify(
+            r => r.RenewLeasesAsync(
+                It.Is<IReadOnlyList<Guid>>(l => l.Count == 3 && l.Contains(jobId1) && l.Contains(jobId2) && l.Contains(jobId3)),
+                It.IsAny<DateTimeOffset>(),
+                It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce);
     }
 }

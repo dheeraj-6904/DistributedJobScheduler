@@ -10,12 +10,19 @@ public sealed class HeartbeatService : BackgroundService
     private readonly ActiveJobTracker _tracker;
     private readonly IJobRepository _repository;
     private readonly ILogger<HeartbeatService> _logger;
+    private readonly TimeSpan _interval;
 
     public HeartbeatService(ActiveJobTracker tracker, IJobRepository repository, ILogger<HeartbeatService> logger)
+        : this(tracker, repository, logger, TimeSpan.FromSeconds(10))
+    {
+    }
+
+    public HeartbeatService(ActiveJobTracker tracker, IJobRepository repository, ILogger<HeartbeatService> logger, TimeSpan interval)
     {
         _tracker = tracker;
         _repository = repository;
         _logger = logger;
+        _interval = interval;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -35,8 +42,8 @@ public sealed class HeartbeatService : BackgroundService
                     _logger.LogDebug("Renewed leases for {Count} active jobs.", activeJobs.Count);
                 }
 
-                // Fire the heartbeat every 10 seconds
-                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+                // Fire the heartbeat every configured interval (default 10 seconds)
+                await Task.Delay(_interval, stoppingToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
