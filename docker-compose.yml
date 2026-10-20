@@ -62,6 +62,7 @@ services:
       - ConnectionStrings__Postgres=Host=postgres;Database=DistributedJobScheduler;Username=postgres;Password=postgres
       - ConnectionStrings__Redis=redis:6379
       - ASPNETCORE_URLS=http://+:8080
+      - Worker__Concurrency=${WORKER_CONCURRENCY:-4}
     depends_on:
       postgres:
         condition: service_healthy

@@ -1,19 +1,23 @@
-
-
 using DistributedJobScheduler.Core.Infrastructure;
 using DistributedJobScheduler.Worker;
 using DistributedJobScheduler.Worker.Handlers;
 using DistributedJobScheduler.Core.Execution;
+using Microsoft.Extensions.Options;
 using Npgsql;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Connection Strings
+// 1. Connection Strings & Options
 var pgConnectionString = builder.Configuration.GetConnectionString("Postgres") 
     ?? "Host=localhost;Database=DistributedJobScheduler;Username=postgres;Password=postgres";
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis") 
     ?? "localhost:6379";
+
+builder.Services.AddSingleton<IValidateOptions<WorkerOptions>, WorkerOptionsValidator>();
+builder.Services.AddOptions<WorkerOptions>()
+    .BindConfiguration(WorkerOptions.SectionName)
+    .ValidateOnStart();
 
 // 2. Shared Connections
 builder.Services.AddSingleton(NpgsqlDataSource.Create(pgConnectionString));

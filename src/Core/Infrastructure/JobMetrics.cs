@@ -42,4 +42,20 @@ public static class JobMetrics
     {
         return QueueDepths.TryGetValue(topic.ToString().ToLowerInvariant(), out var depth) ? depth : 0;
     }
+
+    // In-flight jobs gauge tracking active job executions on this worker instance
+    private static int _inFlightJobs;
+
+    public static readonly ObservableGauge<int> JobsInFlight = Meter.CreateObservableGauge<int>(
+        "jobs.in_flight",
+        observeValue: () => Volatile.Read(ref _inFlightJobs),
+        unit: "{jobs}",
+        description: "Current number of jobs being executed by this worker"
+    );
+
+    public static void IncrementInFlight() => Interlocked.Increment(ref _inFlightJobs);
+
+    public static void DecrementInFlight() => Interlocked.Decrement(ref _inFlightJobs);
+
+    public static int GetInFlightCount() => Volatile.Read(ref _inFlightJobs);
 }
